@@ -14,6 +14,7 @@
 (def *publish-settings-file* (join *config-path* "GetPublishSettings"))
 (def *config-file* (join *config-path* "config.json"))
 (def *config* (loads (.read (open *config-file* "r"))))
+(def *default-os* "Ubuntu Server 14.04.2.LTS")
 
 (defn save-config []
     ; commit state to disk
@@ -63,6 +64,19 @@
                 {"subscription_id" id
                  "cert_file"       (cert-path id)}))))
 
+(defn get-os-images [sms substr]
+    (map
+        (fn [i] {"Label" (. i label) "Image" (. i name)})
+        (filter
+            (fn [i] (in substr (. i label))) 
+            (.list-os-images sms))))
+
+
+(defn dump-os-images [sms substr]
+    (print
+        (apply tabulate [(list (get-os-images sms substr))]
+            {"headers" "keys"})))
+
 
 (defn init []
     (if (not (in "subscriptions" *config*))
@@ -75,4 +89,4 @@
 
 (defmain [&rest args]
     (let [[session (init)]]
-        (print (.list-hosted-services session))))
+        (dump-os-images session "Ubuntu Server 14.04")))

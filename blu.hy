@@ -4,9 +4,12 @@
     [json                    [loads dumps]]
     [os                      [environ]]
     [os.path                 [join]]
+    [OpenSSL.crypto          [load-pkcs12 dump-privatekey dump-certificate *filetype-pem*]]
+    [subprocess              [Popen *pipe*]]
     [tabulate                [tabulate]]
     [xml.etree.ElementTree :as et])
-
+ 
+(def *settings-url* "https://manage.windowsazure.com/publishsettings/index")
 (def *config-path* (join  (.get environ "HOME") ".blu"))
 (def *publish-settings-file* (join *config-path* "GetPublishSettings"))
 (def *config-file* (join *config-path* "config.json"))
@@ -21,6 +24,13 @@
     (join *config-path* (+ id ".pem")))
 
 
+(defn pfx2pem [pfx]
+    (let [[p12 (load-pkcs12 (str pfx) (str ""))]
+          [k   (dump-privatekey *filetype-pem* (.get-privatekey p12))]
+          [c   (dump-certificate *filetype-pem* (.get-certificate p12))]]
+        (+ k c)))
+
+
 (defn parse-publish-settings [filename]
     ; parse the Azure Portal Publish Settings file
     (let [[subscriptions (.findall (.getroot (.parse et filename)) ".//Subscription")]
@@ -28,7 +38,7 @@
         (for [s subscriptions]
             (let [[id (get s.attrib "Id")]]
                 (.write (open (cert-path id) "w")
-                        (b64decode (get s.attrib "ManagementCertificate")))
+                        (pfx2pem (b64decode (get s.attrib "ManagementCertificate"))))
                 (del (get s.attrib "ManagementCertificate"))
                 (assoc subs (get s.attrib "Id") s.attrib)))
         subs))
@@ -48,15 +58,16 @@
     (if (in id (get *config* "subscriptions"))
         (do
             (assoc *config* "active_subscription" id)
-            (save-config)
-            (ServiceManagementService id (cert-path id)))))
+            (print (cert-path id))
+            (apply ServiceManagementService []
+                {"subscription_id" id
+                 "cert_file"       (cert-path id)}))))
 
 
 (defn init []
     (if (not (in "subscriptions" *config*))
         (let [[subs (parse-publish-settings *publish-settings-file*)]]
-            (assoc *config* "subscriptions" subs)
-            (save-config)))
+            (assoc *config* "subscriptions" subs)))
     (if (in "active_subscription" *config*)
         (set-active-sub (get *config* "active_subscription"))
         nil))
@@ -64,4 +75,4 @@
 
 (defmain [&rest args]
     (let [[session (init)]]
-        (print (.list-os-images session))))
+        (print (.list-hosted-services session))))

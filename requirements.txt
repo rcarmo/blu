@@ -1,7 +1,7 @@
 hy
 azure
-prompt_toolkit
 pygments
 tabulate
 fabric
 pyOpenSSL
+click

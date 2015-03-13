@@ -1,5 +1,6 @@
 # blu
-An exploratory Azure CLI
+
+An exploratory Azure provisioning tool, because the current cross-platform CLI isn't quite what I expected.
 
 ## Abstractions
 
@@ -13,6 +14,8 @@ TBC
 
 ### Virtual Machine
 
+
+
 ### User
 
 One or more SSH keys to provision remotely for access.
@@ -21,7 +24,7 @@ One or more SSH keys to provision remotely for access.
 
 In KISS style, a role is an OS image and a set of base packages to install after provisioning.
 
-## Commands
+## Commands (To Be Implemented)
 
 * init
 * project (list, create, destroy, etc.)

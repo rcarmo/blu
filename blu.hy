@@ -1,6 +1,7 @@
 (import
     [azure.servicemanagement [ServiceManagementService]]
     [base64                  [b64decode]]
+    [click                   [argument command group option]]
     [json                    [loads dumps]]
     [os                      [environ]]
     [os.path                 [join]]
@@ -15,6 +16,7 @@
 (def *config-file* (join *config-path* "config.json"))
 (def *config* (loads (.read (open *config-file* "r"))))
 (def *default-os* "Ubuntu Server 14.04.2.LTS")
+(def *sms* nil)
 
 (defn save-config []
     ; commit state to disk
@@ -44,8 +46,12 @@
                 (assoc subs (get s.attrib "Id") s.attrib)))
         subs))
 
+(with-decorator (apply group [] {"chain" true})
+    (defn cli []
+        ; Blu is a simplified Azure CLI
+        (setv *sms* (get-session))))
 
-(defn dump-subs [subs]
+(defn dump-subscriptions [subs]
      ; dump known subscriptions
      (let [[summary (.values subs)]]
         (for [s summary]
@@ -59,10 +65,12 @@
     (if (in id (get *config* "subscriptions"))
         (do
             (assoc *config* "active_subscription" id)
-            (print (cert-path id))
             (apply ServiceManagementService []
                 {"subscription_id" id
                  "cert_file"       (cert-path id)}))))
+
+(with-decorator (group)
+    (defn image []))
 
 (defn get-os-images [sms substr]
     (map
@@ -72,13 +80,19 @@
             (.list-os-images sms))))
 
 
-(defn dump-os-images [sms substr]
-    (print
-        (apply tabulate [(list (get-os-images sms substr))]
-            {"headers" "keys"})))
+(with-decorator (cli.command "images")
+                (apply option ["-f" "--filter" "substr"] {"default" *default-os* "help" "partial string of OS name"})
+    (defn list-images [substr]
+        ; list OS images that match <substr>
+        (print
+            (apply tabulate [(list (get-os-images (get-session) substr))]
+                {"headers" "keys"}))))
 
+(with-decorator (cli.command "info")
+    (defn dump-info []
+        (dump-subscriptions (get *config* "subscriptions"))))
 
-(defn init []
+(defn get-session []
     (if (not (in "subscriptions" *config*))
         (let [[subs (parse-publish-settings *publish-settings-file*)]]
             (assoc *config* "subscriptions" subs)))
@@ -88,5 +102,4 @@
 
 
 (defmain [&rest args]
-    (let [[session (init)]]
-        (dump-os-images session "Ubuntu Server 14.04")))
+    (cli))

@@ -75,6 +75,16 @@
             (fn [i] (in substr (. i label))) 
             (.list-os-images sms))))
 
+
+(defn get-active-services [sms substr]
+    (map
+        (fn [i] {"Name" (. i service-name)})
+        (filter
+            (fn [i] (in substr (. i service-name))) 
+            (.list-hosted-services sms))))
+
+
+
 ; CLI commands
 
 (with-decorator
@@ -92,6 +102,18 @@
         ; list OS images that match <substr>
         (print
             (apply tabulate [(list (get-os-images (get-session) substr))]
+                {"headers" "keys"}))))
+
+
+(with-decorator
+    (apply cli.command ["services"]
+        {"help" "List existing cloud services"})
+    (apply option ["-f" "--filter" "substr"]
+        {"help" "partial string of service name"})
+    (defn list-services [substr]
+        ; list cloud services that match <substr>
+        (print
+            (apply tabulate [(list (get-active-services (get-session) (if substr substr "")))]
                 {"headers" "keys"}))))
 
 

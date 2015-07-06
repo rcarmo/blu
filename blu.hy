@@ -24,10 +24,12 @@
 
 
 (defn cert-path [id]
+    ; return a uniform location for each subscription's management certificate
     (join *config-path* (+ id ".pem")))
 
 
 (defn pfx2pem [pfx]
+    ; convert the embedded PFX certifcates to PEM format
     (let [[p12 (load-pkcs12 (str pfx) (str ""))]
           [k   (dump-privatekey *filetype-pem* (.get-privatekey p12))]
           [c   (dump-certificate *filetype-pem* (.get-certificate p12))]]
@@ -46,10 +48,6 @@
                 (assoc subs (get s.attrib "Id") s.attrib)))
         subs))
 
-(with-decorator (apply group [] {"chain" true})
-    (defn cli []
-        ; Blu is a simplified Azure CLI
-        (setv *sms* (get-session))))
 
 (defn dump-subscriptions [subs]
      ; dump known subscriptions
@@ -69,8 +67,6 @@
                 {"subscription_id" id
                  "cert_file"       (cert-path id)}))))
 
-(with-decorator (group)
-    (defn image []))
 
 (defn get-os-images [sms substr]
     (map
@@ -79,18 +75,31 @@
             (fn [i] (in substr (. i label))) 
             (.list-os-images sms))))
 
+; CLI commands
 
-(with-decorator (cli.command "images")
-                (apply option ["-f" "--filter" "substr"] {"default" *default-os* "help" "partial string of OS name"})
+(with-decorator
+    (apply group [] {"chain" true})
+    (defn cli []
+        (setv *sms* (get-session))))
+
+
+(with-decorator
+    (apply cli.command ["images"]
+        {"help" "List available OS images"})
+    (apply option ["-f" "--filter" "substr"]
+        {"default" *default-os* "help" "partial string of OS name"})
     (defn list-images [substr]
         ; list OS images that match <substr>
         (print
             (apply tabulate [(list (get-os-images (get-session) substr))]
                 {"headers" "keys"}))))
 
-(with-decorator (cli.command "info")
+
+(with-decorator
+    (cli.command "info")
     (defn dump-info []
         (dump-subscriptions (get *config* "subscriptions"))))
+
 
 (defn get-session []
     (if (not (in "subscriptions" *config*))

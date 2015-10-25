@@ -1,4 +1,7 @@
 (import
+    [azure.mgmt.common       [SubscriptionCloudCredentials]]
+    [azure.mgmt.compute      [ComputeManagementClient]]
+    [azure.mgmt.network      [NetworkResourceProviderClient]]
     [azure.servicemanagement [ServiceManagementService]]
     [base64                  [b64decode]]
     [click                   [argument command group option]]
@@ -84,6 +87,12 @@
             (.list-hosted-services sms))))
 
 
+(defn get-active-instances [sms substr]
+    (map
+        (fn [i] {"Name" (. i service-name)})
+        (filter
+            (fn [i] (in substr (. i service-name))) 
+            (.list-hosted-services sms))))
 
 ; CLI commands
 
@@ -114,6 +123,18 @@
         ; list cloud services that match <substr>
         (print
             (apply tabulate [(list (get-active-services (get-session) (if substr substr "")))]
+                {"headers" "keys"}))))
+
+
+(with-decorator
+    (apply cli.command ["instances"]
+        {"help" "List existing VM instances"})
+    (apply option ["-f" "--filter" "substr"]
+        {"help" "partial string of instance name"})
+    (defn list-services [substr]
+        ; list cloud services that match <substr>
+        (print
+            (apply tabulate [(list (get-active-instances (get-session) (if substr substr "")))]
                 {"headers" "keys"}))))
 
 

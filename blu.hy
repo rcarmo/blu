@@ -17,7 +17,7 @@
 (def *config-path* (join  (.get environ "HOME") ".blu"))
 (def *publish-settings-file* (join *config-path* "GetPublishSettings"))
 (def *config-file* (join *config-path* "config.json"))
-(def *config* (loads (.read (open *config-file* "r"))))
+(def *config* (try  (loads (.read (open *config-file* "r"))) (except {})))
 (def *default-os* "Ubuntu Server 14.04.2.LTS")
 (def *sms* nil)
 
